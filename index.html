@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Maze Generator</title>
+    <script src="Eller.js"></script>
+    <script src="AStarCustomMap.js"></script>
+</head>
+
+<body>
+
+    <canvas id="mazeCanvas" width="600px" height="600px"></canvas>
+    <script>
+        let mazeWidth = 15;
+        let mazeHeight = 17;
+        let mazeMargin = 15; //px
+        let mazeGridWidth = 30; //px
+        let eller = new EllerMaze(mazeWidth, mazeHeight);
+        let maze = eller.GenerateMaze();
+
+        let mazeCanvas = document.getElementById("mazeCanvas");
+        let context = mazeCanvas.getContext('2d');
+
+        drawMaze();
+        let points = [];
+        let link = [];
+        toPathMap(maze);
+
+        let astar = new AStarCustomMap(points, link);
+        let path = astar.GetPath(points[0], points[7]);
+        drawPath(path);
+
+        function drawMaze() {
+            context.beginPath();
+            context.strokeStyle = 'black';
+            //畫上邊和左邊的線
+            context.moveTo(mazeMargin, mazeMargin);
+            context.lineTo(mazeMargin + mazeGridWidth * mazeWidth, mazeMargin);
+
+            context.moveTo(mazeMargin, mazeMargin);
+            context.lineTo(mazeMargin, mazeMargin + mazeGridWidth * mazeHeight);
+
+            //依據每個cell右邊和下邊畫線
+            for (let i = 0; i < maze.length; i++) {
+                for (let j = 0; j < maze[i].Cells.length; j++) {
+                    if (maze[i].Cells[j].RightWall) {
+                        context.moveTo(mazeMargin + (j + 1) * mazeGridWidth, mazeMargin + i * mazeGridWidth);
+                        context.lineTo(mazeMargin + (j + 1) * mazeGridWidth, mazeMargin + (i + 1) * mazeGridWidth);
+                    }
+                    if (maze[i].Cells[j].BottomWall) {
+                        context.moveTo(mazeMargin + j * mazeGridWidth, mazeMargin + (i + 1) * mazeGridWidth);
+                        context.lineTo(mazeMargin + (j + 1) * mazeGridWidth, mazeMargin + (i + 1) * mazeGridWidth);
+                    }
+                }
+            }
+            context.stroke();
+            context.closePath();
+        }
+
+        function drawPath(path) {
+            context.beginPath();
+            context.strokeStyle = 'red';
+            let pointPath = path.map(x => points.find(y => y.Id === x));
+            for (let i = 0; i < pointPath.length - 1; i++) {
+                context.moveTo(mazeMargin + mazeGridWidth / 2 + pointPath[i].X * mazeGridWidth, mazeMargin + mazeGridWidth / 2 + pointPath[i].Y * mazeGridWidth);
+                context.lineTo(mazeMargin + mazeGridWidth / 2 + pointPath[i + 1].X * mazeGridWidth, mazeMargin + mazeGridWidth / 2 + pointPath[i + 1].Y * mazeGridWidth)
+            }
+            context.stroke();
+            context.closePath();
+        }
+
+        function toPathMap(maze) {
+            for (let i = 0; i < maze.length; i++) {
+                for (let j = 0; j < maze[i].Cells.length; j++) {
+                    let id = maze[i].Cells.length * i + j;
+                    points.push(new Point(id, j, i));
+                    if (!maze[i].Cells[j].RightWall) {
+                        link.push([id, id + 1]);
+                    }
+                    if (!maze[i].Cells[j].BottomWall) {
+                        link.push([id, id + maze[i].Cells.length]);
+                    }
+                }
+            }
+            console.log(JSON.stringify(points));
+            console.log(JSON.stringify(link));
+        }
+    </script>
+</body>
+
+</html>

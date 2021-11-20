@@ -9,28 +9,132 @@
     <script src="AStarCustomMap.js"></script>
 </head>
 
-<body>
-
+<body style="text-align: center;">
+    Width: <select id="mazeWidth"></select> Height: <select id="mazeHeight"></select>
+    <input type="button" onclick="onSubmitForm()" value="Submit" />
+    <input type="button" id="btnPath" onclick="startPath()" value="Path" /><br />
     <canvas id="mazeCanvas" width="600px" height="600px"></canvas>
+    <div id="message" style="text-align: center;">Click Path button to setup start and end point.</div>
     <script>
-        let mazeWidth = 15;
-        let mazeHeight = 17;
-        let mazeMargin = 15; //px
+        const MAZE_MIN_LENGTH = 5;
+        const MAZE_MAX_LENGTH = 30;
+        let selectMazeWidth = document.querySelector('#mazeWidth');
+        let selectMazeHeight = document.querySelector('#mazeHeight');
+        let selectMazeOptionStr = '';
+        for (let i = MAZE_MIN_LENGTH; i <= MAZE_MAX_LENGTH; i++) {
+            selectMazeOptionStr += '<option value="' + i + '">' + i + '</option>';
+        }
+        selectMazeWidth.innerHTML = selectMazeOptionStr;
+        selectMazeHeight.innerHTML = selectMazeOptionStr;
+
+        let mazeWidth = 10;
+        let mazeHeight = 10;
+        let mazeMargin = 2; //px
         let mazeGridWidth = 30; //px
         let eller = new EllerMaze(mazeWidth, mazeHeight);
-        let maze = eller.GenerateMaze();
+        let maze = null;
 
-        let mazeCanvas = document.getElementById("mazeCanvas");
+        let mazeCanvas = document.getElementById('mazeCanvas');
         let context = mazeCanvas.getContext('2d');
+        mazeCanvas.addEventListener('click', onMazeCanvasClick);
+        let message = document.getElementById('message');
 
-        drawMaze();
         let points = [];
         let link = [];
-        toPathMap(maze);
 
-        let astar = new AStarCustomMap(points, link);
-        let path = astar.GetPath(points[0], points[7]);
-        drawPath(path);
+        let astar = null;
+        let path = []
+
+        const PATH_DONE = 0;
+        const PATH_SELECT_START = 1;
+        const PATH_SELECT_END = 2;
+        let pathStatus = PATH_DONE;
+        let pathStart = null;
+        let pathEnd = null;
+        let btnPath = document.getElementById('btnPath');
+        let imageData = null;
+
+
+        selectMazeWidth.value = mazeWidth + '';
+        selectMazeHeight.value = mazeHeight + '';
+        onSubmitForm();
+
+        function onSubmitForm() {
+            context.clearRect(0, 0, mazeCanvas.width, mazeCanvas.height);
+            mazeWidth = parseInt(selectMazeWidth.value, 10);
+            mazeHeight = parseInt(selectMazeHeight.value, 10);
+            setupeMaze(mazeWidth, mazeHeight);
+        }
+        function startPath() {
+            changeMazePathStatus();
+        }
+
+        function changeMazePathStatus() {
+            switch (pathStatus) {
+                case PATH_DONE:
+                    pathStatus = PATH_SELECT_START;
+                    context.putImageData(imageData, 0, 0);
+                    btnPath.disabled = true;
+                    message.innerText = 'Click anywhere in maze to select start point.';
+                    break;
+                case PATH_SELECT_START:
+                    pathStatus = PATH_SELECT_END;
+                    btnPath.disabled = true;
+                    message.innerText = 'Click anywhere in maze to select end point.';
+                    break;
+                case PATH_SELECT_END:
+                    pathStatus = PATH_DONE;
+                    setupPath(pathStart, pathEnd);
+                    btnPath.disabled = false;
+                    message.innerText = 'Click Path button to setup start and end point.';
+                    break;
+            }
+        }
+
+        function onMazeCanvasClick(e) {
+            if (pathStatus == PATH_DONE) {
+                return;
+            }
+            const elementRelativeX = e.offsetX;
+            const elementRelativeY = e.offsetY;
+            const canvasRelativeX = elementRelativeX * mazeCanvas.width / mazeCanvas.clientWidth;
+            const canvasRelativeY = elementRelativeY * mazeCanvas.height / mazeCanvas.clientHeight;
+
+            let x = Math.floor((canvasRelativeX - mazeMargin) / mazeGridWidth);
+            let y = Math.floor((canvasRelativeY - mazeMargin) / mazeGridWidth);
+            console.log(pathStatus + '=>' + x + ',' + y);
+            context.fillStyle = "red";
+            context.fillRect(
+                x * mazeGridWidth + mazeMargin + (mazeGridWidth / 4),
+                y * mazeGridWidth + mazeMargin + (mazeGridWidth / 4),
+                mazeGridWidth / 2,
+                mazeGridWidth / 2);
+
+            if (pathStatus === PATH_SELECT_START) {
+                pathStart = points.find(p => p.X === x && p.Y === y);
+                changeMazePathStatus();
+            } else if (pathStatus === PATH_SELECT_END) {
+                pathEnd = points.find(p => p.X === x && p.Y === y);
+                changeMazePathStatus();
+            }
+        }
+
+        function setupeMaze(width, height, vBias = 0.5, hBias = 0.5) {
+            eller.LengthOfRow = width;
+            eller.NumberOfRow = height;
+            mazeCanvas.width = mazeMargin * 2 + mazeGridWidth * width;
+            mazeCanvas.height = mazeMargin * 2 + mazeGridWidth * height;
+            maze = eller.GenerateMaze();
+            drawMaze();
+            toPathMap(maze);
+            imageData = context.getImageData(0, 0, mazeCanvas.width, mazeCanvas.height);
+        }
+
+        function setupPath(start, end) {
+            astar = new AStarCustomMap(points, link);
+            path = astar.GetPath(start, end);
+            drawPath(path);
+        }
 
         function drawMaze() {
             context.beginPath();
@@ -72,6 +176,8 @@
         }
 
         function toPathMap(maze) {
+            points = [];
+            link = [];
             for (let i = 0; i < maze.length; i++) {
                 for (let j = 0; j < maze[i].Cells.length; j++) {
                     let id = maze[i].Cells.length * i + j;
@@ -84,8 +190,6 @@
                     }
                 }
             }
-            console.log(JSON.stringify(points));
-            console.log(JSON.stringify(link));
         }
     </script>
 </body>

@@ -7,30 +7,30 @@
     <title>Maze Generator</title>
     <script src="Eller.js"></script>
     <script src="AStarCustomMap.js"></script>
+    <style>
+        input[type=number] {
+            width: 2.5rem;
+        }
+    </style>
 </head>
 
 <body style="text-align: center;">
-    Width: <select id="mazeWidth"></select> Height: <select id="mazeHeight"></select>
-    <input type="button" onclick="onSubmitForm()" value="Submit" />
-    <input type="button" id="btnPath" onclick="startPath()" value="Path" /><br />
-    <canvas id="mazeCanvas" width="600px" height="600px"></canvas>
-    <div id="message" style="text-align: center;">Click Path button to setup start and end point.</div>
+    Width: <input type="number" id="mazeWidth" value="" /> Height: <input type="number" id="mazeHeight" value="" />
+    <input type="button" onclick="setNewMaze()" value="New Maze" />
+    <input type="button" id="btnPath" onclick="startPath()" value="Select Path" /><br />
+    <div id="message" style="text-align: center;"></div>
+    <canvas id="mazeCanvas"></canvas>
     <script>
         const MAZE_MIN_LENGTH = 5;
         const MAZE_MAX_LENGTH = 30;
         let selectMazeWidth = document.querySelector('#mazeWidth');
         let selectMazeHeight = document.querySelector('#mazeHeight');
-        let selectMazeOptionStr = '';
-        for (let i = MAZE_MIN_LENGTH; i <= MAZE_MAX_LENGTH; i++) {
-            selectMazeOptionStr += '<option value="' + i + '">' + i + '</option>';
-        }
-        selectMazeWidth.innerHTML = selectMazeOptionStr;
-        selectMazeHeight.innerHTML = selectMazeOptionStr;
 
-        let mazeWidth = 10;
-        let mazeHeight = 10;
         let mazeMargin = 2; //px
         let mazeGridWidth = 30; //px
+        //maze size auto fit screen size
+        let mazeWidth = Math.floor((window.innerWidth - 2 * mazeMargin - 2 * 8) / mazeGridWidth);
+        let mazeHeight = Math.floor((window.innerHeight - 2 * mazeMargin - 2 * 8) / mazeGridWidth) - 2;
         let eller = new EllerMaze(mazeWidth, mazeHeight);
         let maze = null;
 
@@ -45,25 +45,27 @@
         let astar = null;
         let path = []
 
-        const PATH_DONE = 0;
-        const PATH_SELECT_START = 1;
-        const PATH_SELECT_END = 2;
+        const PATH_NONE = 0;
+        const PATH_DONE = 1;
+        const PATH_SELECT_START = 2;
+        const PATH_SELECT_END = 3;
         let pathStatus = PATH_DONE;
         let pathStart = null;
         let pathEnd = null;
         let btnPath = document.getElementById('btnPath');
         let imageData = null;
 
+        selectMazeWidth.value = mazeWidth;
+        selectMazeHeight.value = mazeHeight;
+        setNewMaze();
 
-        selectMazeWidth.value = mazeWidth + '';
-        selectMazeHeight.value = mazeHeight + '';
-        onSubmitForm();
-
-        function onSubmitForm() {
+        function setNewMaze() {
             context.clearRect(0, 0, mazeCanvas.width, mazeCanvas.height);
             mazeWidth = parseInt(selectMazeWidth.value, 10);
             mazeHeight = parseInt(selectMazeHeight.value, 10);
             setupeMaze(mazeWidth, mazeHeight);
+            pathStatus = PATH_DONE;
+            changeMazePathStatus();
         }
         function startPath() {
             changeMazePathStatus();
@@ -72,8 +74,15 @@
         function changeMazePathStatus() {
             switch (pathStatus) {
                 case PATH_DONE:
-                    pathStatus = PATH_SELECT_START;
+                    pathStatus = PATH_NONE;
+                    btnPath.disabled = false;
+                    //erase path
                     context.putImageData(imageData, 0, 0);
+                    btnPath.value = 'Select Path';
+                    message.innerText = 'Click Path button to setup start and end point.';
+                    break;
+                case PATH_NONE:
+                    pathStatus = PATH_SELECT_START;
                     btnPath.disabled = true;
                     message.innerText = 'Click anywhere in maze to select start point.';
                     break;
@@ -86,13 +95,14 @@
                     pathStatus = PATH_DONE;
                     setupPath(pathStart, pathEnd);
                     btnPath.disabled = false;
-                    message.innerText = 'Click Path button to setup start and end point.';
+                    btnPath.value = 'Clear Path';
+                    message.innerText = 'Click Path button to clear path.';
                     break;
             }
         }
 
         function onMazeCanvasClick(e) {
-            if (pathStatus == PATH_DONE) {
+            if (pathStatus === PATH_DONE || pathStatus === PATH_NONE) {
                 return;
             }
             const elementRelativeX = e.offsetX;
@@ -100,9 +110,9 @@
             const canvasRelativeX = elementRelativeX * mazeCanvas.width / mazeCanvas.clientWidth;
             const canvasRelativeY = elementRelativeY * mazeCanvas.height / mazeCanvas.clientHeight;
 
+            //find click point x, y
             let x = Math.floor((canvasRelativeX - mazeMargin) / mazeGridWidth);
             let y = Math.floor((canvasRelativeY - mazeMargin) / mazeGridWidth);
-            console.log(pathStatus + '=>' + x + ',' + y);
             context.fillStyle = "red";
             context.fillRect(
                 x * mazeGridWidth + mazeMargin + (mazeGridWidth / 4),
@@ -112,11 +122,10 @@
 
             if (pathStatus === PATH_SELECT_START) {
                 pathStart = points.find(p => p.X === x && p.Y === y);
-                changeMazePathStatus();
             } else if (pathStatus === PATH_SELECT_END) {
                 pathEnd = points.find(p => p.X === x && p.Y === y);
-                changeMazePathStatus();
             }
+            changeMazePathStatus();
         }
 
         function setupeMaze(width, height, vBias = 0.5, hBias = 0.5) {
@@ -127,6 +136,7 @@
             maze = eller.GenerateMaze();
             drawMaze();
             toPathMap(maze);
+            //save imagedata with no path
             imageData = context.getImageData(0, 0, mazeCanvas.width, mazeCanvas.height);
         }
 
@@ -139,14 +149,14 @@
         function drawMaze() {
             context.beginPath();
             context.strokeStyle = 'black';
-            //畫上邊和左邊的線
+            //draw left and top line
             context.moveTo(mazeMargin, mazeMargin);
             context.lineTo(mazeMargin + mazeGridWidth * mazeWidth, mazeMargin);
 
             context.moveTo(mazeMargin, mazeMargin);
             context.lineTo(mazeMargin, mazeMargin + mazeGridWidth * mazeHeight);
 
-            //依據每個cell右邊和下邊畫線
+            //draw right and bottom of each cell
             for (let i = 0; i < maze.length; i++) {
                 for (let j = 0; j < maze[i].Cells.length; j++) {
                     if (maze[i].Cells[j].RightWall) {
@@ -175,6 +185,9 @@
             context.closePath();
         }
 
+        /**
+         * transfer to astar format
+        */
         function toPathMap(maze) {
             points = [];
             link = [];

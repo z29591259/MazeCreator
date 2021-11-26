@@ -8,18 +8,64 @@
     <script src="Eller.js"></script>
     <script src="AStarCustomMap.js"></script>
     <style>
+        html,
+        body {
+            height: 100%;
+            margin: 0
+        }
+
         input[type=number] {
             width: 2.5rem;
+        }
+
+        .box {
+            display: flex;
+            flex-flow: column;
+            height: 100%;
+        }
+
+        .box .row.header {
+            flex: 0 1 auto;
+        }
+
+        .box .row.content {
+            display: flex;
+            flex-flow: column;
+            flex: 1 1 auto;
+            overflow-y: auto;
+        }
+
+        .box .row.footer {
+            flex: 0 1 auto;
         }
     </style>
 </head>
 
-<body style="text-align: center;">
-    Width: <input type="number" id="mazeWidth" value="" /> Height: <input type="number" id="mazeHeight" value="" />
-    <input type="button" onclick="setNewMaze()" value="New Maze" />
-    <input type="button" id="btnPath" onclick="startPath()" value="Select Path" /><br />
-    <div id="message" style="text-align: center;"></div>
-    <canvas id="mazeCanvas"></canvas>
+<body style="text-align: center;" onload="onload()">
+    <div class="box">
+        <div class="row header">
+            <h2 style="margin: .3rem;">Eller's Algorithm Maze Generator</h2>
+            <div>
+                Width: <input type="number" id="mazeWidth" value="" /> Height: <input type="number" id="mazeHeight"
+                    value="" />
+                <input type="button" onclick="setNewMaze()" value="New Maze" />
+                <input type="button" id="btnPath" onclick="startPath()" value="Select Path" />
+                <br />
+                <div id="message" style="text-align: center;">&nbsp;</div>
+            </div>
+        </div>
+        <div class="row content">
+            <div style="overflow: hidden;">
+                <canvas id="mazeCanvas"></canvas>
+            </div>
+        </div>
+        <div class="row footer">
+            <p style="margin: .5rem;">
+                <a href="https://github.com/z29591259/MazeCreator">Source Code</a>
+                <a href="https://woodloch.blog">Blog</a>
+            </p>
+        </div>
+    </div>
     <script>
         const MAZE_MIN_LENGTH = 5;
         const MAZE_MAX_LENGTH = 30;
@@ -28,17 +74,15 @@
 
         let mazeMargin = 2; //px
         let mazeGridWidth = 30; //px
-        //maze size auto fit screen size
-        let mazeWidth = Math.floor((window.innerWidth - 2 * mazeMargin - 2 * 8) / mazeGridWidth);
-        let mazeHeight = Math.floor((window.innerHeight - 2 * mazeMargin - 2 * 8) / mazeGridWidth) - 2;
+
+        let mazeWidth = 10;
+        let mazeHeight = 10;
         let eller = new EllerMaze(mazeWidth, mazeHeight);
         let maze = null;
-
         let mazeCanvas = document.getElementById('mazeCanvas');
         let context = mazeCanvas.getContext('2d');
         mazeCanvas.addEventListener('click', onMazeCanvasClick);
         let message = document.getElementById('message');
-
         let points = [];
         let link = [];
 
@@ -55,9 +99,12 @@
         let btnPath = document.getElementById('btnPath');
         let imageData = null;
 
-        selectMazeWidth.value = mazeWidth;
-        selectMazeHeight.value = mazeHeight;
-        setNewMaze();
+        function onload() {
+            //maze size auto fit screen size
+            selectMazeWidth.value = Math.floor((window.innerWidth - 10 * mazeMargin) / mazeGridWidth);
+            selectMazeHeight.value = Math.floor((document.querySelector('.content').clientHeight - 2 * mazeMargin) / mazeGridWidth);
+            setNewMaze();
+        }
 
         function setNewMaze() {
             context.clearRect(0, 0, mazeCanvas.width, mazeCanvas.height);
@@ -133,6 +180,8 @@
             eller.NumberOfRow = height;
             mazeCanvas.width = mazeMargin * 2 + mazeGridWidth * width;
             mazeCanvas.height = mazeMargin * 2 + mazeGridWidth * height;
+            mazeCanvas.style.width = mazeCanvas.width;
+            mazeCanvas.style.height = mazeCanvas.height;
             maze = eller.GenerateMaze();
             drawMaze();
             toPathMap(maze);

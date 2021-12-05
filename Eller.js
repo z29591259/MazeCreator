@@ -64,9 +64,9 @@ class EllerRow {
     AssignRightWalls() {
         for (let i = 0; i < this.LengthOfRow; i++) {
             this.Cells[i].RightWall =
-                (i === this.LengthOfRow - 1) || //已是最右邊的格子
-                (this.Cells[i].Set === this.Cells[i + 1].Set) || //上一層和右邊是相通的，這一層就要隔開
-                (Math.random() >= this.verticalBias && !this.IsLastRow);//隨機決定和右邊是否相通
+                (i === this.LengthOfRow - 1) || //is last cell of row
+                (this.Cells[i].Set === this.Cells[i + 1].Set) || //is same set with right cell
+                (Math.random() >= this.verticalBias && !this.IsLastRow);//random decide right wall
             if (!this.Cells[i].RightWall) {
                 this.MergeSets(i, i + 1);
             }
@@ -77,7 +77,7 @@ class EllerRow {
     AssignBottomWalls() {
         for (let i = 0; i < this.LengthOfRow; i++) {
             this.Cells[i].BottomWall =
-                (this.Sets[this.Cells[i].Set] !== 1 && Math.random() >= this.HorizontalBias) || //上一層是獨立一格時，一定要向下打通
+                (this.Sets[this.Cells[i].Set] !== 1 && Math.random() >= this.HorizontalBias) || //if the number of sets is 1, must not have a bottom wall
                 this.IsLastRow;
             if (this.Cells[i].BottomWall) {
                 this.Sets[this.Cells[i].Set] -= 1;
